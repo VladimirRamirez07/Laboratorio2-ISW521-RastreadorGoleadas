@@ -1,0 +1,25 @@
+{
+  "name": "laboratorio2-isw521-rastreadorgoleadas",
+  "version": "1.0.0",
+  "description": "Laboratorio 2 ISW-521 - Categoría A: Rastreador de Goleadas - JWT, async/await, resiliencia (backoff, offline, 401/429/500)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VladimirRamirez07/Laboratorio2-ISW521-RastreadorGoleadas.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/VladimirRamirez07/Laboratorio2-ISW521-RastreadorGoleadas/issues"
+  },
+  "homepage": "https://github.com/VladimirRamirez07/Laboratorio2-ISW521-RastreadorGoleadas#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}

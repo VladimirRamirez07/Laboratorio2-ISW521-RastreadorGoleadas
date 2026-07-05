@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rastreador de Goleadas - Mundial 2026</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ===== PANTALLA DE LOGIN ===== -->
+  <section id="login-screen" class="screen">
+    <div class="login-card">
+      <h1>Rastreador de Goleadas</h1>
+      <p class="subtitle">Mundial 2026 · ISW-521</p>
+
+      <form id="login-form" novalidate>
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email" name="email" required autocomplete="email" />
+
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password" />
+
+        <button type="submit" id="login-btn">Iniciar sesión</button>
+        <p id="login-error" class="error-msg" role="alert"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== PANTALLA PRINCIPAL (DASHBOARD) ===== -->
+  <section id="app-screen" class="screen hidden">
+    <header class="app-header">
+      <h1>Rastreador de Goleadas</h1>
+      <div class="header-actions">
+        <span id="user-name"></span>
+        <button id="logout-btn" class="btn-secondary">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div id="status-bar" class="status-bar hidden"></div>
+
+      <div class="summary-bar">
+        <span id="total-goleadas">Total de goleadas: --</span>
+        <button id="reload-btn" class="btn-secondary">Recargar datos</button>
+      </div>
+
+      <div id="loading-indicator" class="loading hidden">Cargando partidos...</div>
+
+      <ul id="goleadas-list" class="goleadas-list"></ul>
+
+      <p id="empty-msg" class="empty-msg hidden">No se encontraron goleadas (diferencia ≥ 3 goles).</p>
+    </main>
+  </section>
+
+  <!-- ===== MODAL: SESIÓN EXPIRADA (401) ===== -->
+  <div id="session-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h2>Sesión expirada</h2>
+      <p>Tu sesión ha expirado o el token ya no es válido. Por favor, vuelve a iniciar sesión.</p>
+      <button id="session-modal-btn">Volver a iniciar sesión</button>
+    </div>
+  </div>
+
+  <!-- ===== TOAST: RETRY / BACKOFF (429 / 500) ===== -->
+  <div id="retry-toast" class="retry-toast hidden">
+    <p id="retry-toast-text"></p>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
