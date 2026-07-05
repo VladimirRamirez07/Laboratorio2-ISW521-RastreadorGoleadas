@@ -33,12 +33,9 @@ function getFromCache(key) {
 }
 
 /**
- * Limpia el token guardado (usado en logout o 401).
+ * Guarda el token JWT en sessionStorage.
+ * sessionStorage se borra al cerrar la pestaña (más seguro que localStorage).
  */
-function clearToken() {
-  sessionStorage.removeItem(STORAGE_PREFIX + "token");
-}
-
 function saveToken(token) {
   sessionStorage.setItem(STORAGE_PREFIX + "token", token);
 }
@@ -47,4 +44,28 @@ function getToken() {
   return sessionStorage.getItem(STORAGE_PREFIX + "token");
 }
 
-export { saveToCache, getFromCache, saveToken, getToken, clearToken };
+function clearToken() {
+  sessionStorage.removeItem(STORAGE_PREFIX + "token");
+}
+
+/**
+ * Guarda y recupera el nombre del usuario en sessionStorage.
+ * Así el header muestra el nombre aunque el usuario recargue la página.
+ */
+function saveUserName(name) {
+  sessionStorage.setItem(STORAGE_PREFIX + "username", name);
+}
+
+function getUserName() {
+  return sessionStorage.getItem(STORAGE_PREFIX + "username") || "";
+}
+
+export {
+  saveToCache,
+  getFromCache,
+  saveToken,
+  getToken,
+  clearToken,
+  saveUserName,
+  getUserName,
+};

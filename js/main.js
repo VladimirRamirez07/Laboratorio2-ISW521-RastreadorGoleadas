@@ -10,7 +10,13 @@ import {
   isAuthenticated,
   logout,
 } from "./auth.js";
-import { saveToCache, getFromCache, getToken } from "./storage.js";
+import {
+  saveToCache,
+  getFromCache,
+  getToken,
+  saveUserName,
+  getUserName,
+} from "./storage.js";
 import { obtenerGoleadas, enriquecerConEquipos } from "./goleadas.js";
 
 // ===== REFERENCIAS AL DOM =====
@@ -59,6 +65,7 @@ loginForm.addEventListener("submit", async (event) => {
   try {
     const user = await attemptLogin(email, password);
     currentUserName = user.name || user.email;
+    saveUserName(currentUserName);
     userNameEl.textContent = currentUserName;
     showApp();
     await cargarGoleadas();
@@ -66,7 +73,8 @@ loginForm.addEventListener("submit", async (event) => {
     if (err instanceof ApiError) {
       loginError.textContent = err.message;
     } else {
-      loginError.textContent = "No se pudo conectar con el servidor. Intenta de nuevo.";
+      loginError.textContent =
+        "No se pudo conectar con el servidor. Intenta de nuevo.";
     }
   } finally {
     loginBtn.disabled = false;
@@ -102,7 +110,11 @@ function mostrarRetryToast(attempt, delayMs, status) {
   let secondsLeft = Math.ceil(delayMs / 1000);
   retryToast.classList.remove("hidden");
 
-  const motivo = status === 429 ? "límite de peticiones alcanzado" : "error del servidor";
+  const motivo =
+    status === 429
+      ? "límite de peticiones alcanzado"
+      : "error del servidor";
+
   retryToastText.textContent = `Reintentando (${motivo})... intento ${attempt}, próximo en ${secondsLeft}s`;
 
   const intervalId = setInterval(() => {
@@ -145,7 +157,8 @@ async function cargarGoleadas() {
       usandoCacheGames = true;
     } else {
       loadingIndicator.classList.add("hidden");
-      emptyMsg.textContent = "No se pudieron cargar los partidos y no hay datos guardados localmente.";
+      emptyMsg.textContent =
+        "No se pudieron cargar los partidos y no hay datos guardados localmente.";
       emptyMsg.classList.remove("hidden");
       return;
     }
@@ -172,7 +185,8 @@ async function cargarGoleadas() {
 
   // --- Indicador de datos no actualizados (offline) ---
   if (usandoCacheGames || usandoCacheTeams) {
-    statusBar.textContent = "⚠ Mostrando datos guardados localmente (no actualizados). La conexión con el servidor falló.";
+    statusBar.textContent =
+      "⚠ Mostrando datos guardados localmente (no actualizados). La conexión con el servidor falló.";
     statusBar.classList.remove("hidden");
   }
 
@@ -188,14 +202,13 @@ function renderGoleadas(goleadas) {
   totalGoleadasEl.textContent = `Total de goleadas: ${goleadas.length}`;
 
   if (goleadas.length === 0) {
-    emptyMsg.textContent = "No se encontraron goleadas (diferencia ≥ 3 goles).";
+    emptyMsg.textContent =
+      "No se encontraron goleadas (diferencia ≥ 3 goles).";
     emptyMsg.classList.remove("hidden");
     return;
   }
 
-  goleadasList.innerHTML = goleadas
-    .map((partido) => crearTarjetaHTML(partido))
-    .join("");
+  goleadasList.innerHTML = goleadas.map((p) => crearTarjetaHTML(p)).join("");
 }
 
 function crearTarjetaHTML(partido) {
@@ -226,6 +239,8 @@ function crearTarjetaHTML(partido) {
 // ===== INICIALIZACIÓN =====
 function init() {
   if (isAuthenticated()) {
+    currentUserName = getUserName();
+    userNameEl.textContent = currentUserName;
     showApp();
     cargarGoleadas();
   } else {
