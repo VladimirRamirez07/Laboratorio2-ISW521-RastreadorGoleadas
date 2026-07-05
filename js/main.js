@@ -37,7 +37,11 @@ const sessionModal = document.getElementById("session-modal");
 const sessionModalBtn = document.getElementById("session-modal-btn");
 const retryToast = document.getElementById("retry-toast");
 const retryToastText = document.getElementById("retry-toast-text");
+const test401Btn = document.getElementById("test-401-btn");
+const test500Btn = document.getElementById("test-500-btn");
+const test429Btn = document.getElementById("test-429-btn");
 
+const BASE_PROXY = "http://localhost:3000/proxy";
 let currentUserName = "";
 
 // ===== NAVEGACIÓN ENTRE PANTALLAS =====
@@ -100,9 +104,88 @@ sessionModalBtn.addEventListener("click", () => {
   loginForm.reset();
 });
 
-// ===== RECARGAR DATOS MANUALMENTE =====
+// ===== RECARGAR DATOS =====
 reloadBtn.addEventListener("click", () => {
   cargarGoleadas();
+});
+
+// ===== BOTONES DE PRUEBA PARA DEFENSA TÉCNICA =====
+
+// Prueba 401: llama al endpoint real del proxy que devuelve 401
+// Demuestra que la app detecta el error y muestra el modal sin reload
+test401Btn.addEventListener("click", async () => {
+  const token = getToken();
+  try {
+    const response = await fetch(`${BASE_PROXY}/test/401`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 401) {
+      handleSessionExpired();
+    }
+  } catch (err) {
+    console.error("Error en prueba 401:", err);
+  }
+});
+
+// Prueba 500: llama al endpoint real del proxy que devuelve 500
+// Demuestra el backoff exponencial y el fallback al caché offline
+test500Btn.addEventListener("click", async () => {
+  const token = getToken();
+  let attempt = 0;
+  const maxRetries = 4;
+  const baseDelay = 1000;
+
+  const tryFetch = async () => {
+    const response = await fetch(`${BASE_PROXY}/test/500`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.status === 500) {
+      if (attempt < maxRetries) {
+        const delayMs = baseDelay * Math.pow(2, attempt);
+        mostrarRetryToast(attempt + 1, delayMs, 500);
+        attempt++;
+        await new Promise((r) => setTimeout(r, delayMs));
+        await tryFetch();
+      } else {
+        const cached = getFromCache("games");
+        if (cached) {
+          statusBar.textContent =
+            "⚠ Mostrando datos guardados localmente (no actualizados). El servidor falló tras 4 reintentos.";
+          statusBar.classList.remove("hidden");
+        }
+      }
+    }
+  };
+
+  await tryFetch();
+});
+
+// Prueba 429: llama al endpoint real del proxy que devuelve 429
+// Demuestra el countdown visible del rate limit
+test429Btn.addEventListener("click", async () => {
+  const token = getToken();
+  let attempt = 0;
+  const maxRetries = 4;
+  const baseDelay = 1000;
+
+  const tryFetch = async () => {
+    const response = await fetch(`${BASE_PROXY}/test/429`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.status === 429) {
+      if (attempt < maxRetries) {
+        const delayMs = baseDelay * Math.pow(2, attempt);
+        mostrarRetryToast(attempt + 1, delayMs, 429);
+        attempt++;
+        await new Promise((r) => setTimeout(r, delayMs));
+        await tryFetch();
+      }
+    }
+  };
+
+  await tryFetch();
 });
 
 // ===== COUNTDOWN VISUAL PARA BACKOFF (429 / 500) =====
@@ -141,7 +224,7 @@ async function cargarGoleadas() {
   let usandoCacheGames = false;
   let usandoCacheTeams = false;
 
-  // --- Obtener partidos (crítico: si falla y no hay caché, no podemos continuar) ---
+  // --- Obtener partidos ---
   try {
     partidos = await getGames(token, mostrarRetryToast);
     saveToCache("games", partidos);
@@ -164,7 +247,7 @@ async function cargarGoleadas() {
     }
   }
 
-  // --- Obtener equipos (no crítico: si falla, goleadas.js usa respaldo con ids) ---
+  // --- Obtener equipos ---
   try {
     equipos = await getTeams(token, mostrarRetryToast);
     saveToCache("teams", equipos);
@@ -179,11 +262,11 @@ async function cargarGoleadas() {
       equipos = cached.data;
       usandoCacheTeams = true;
     } else {
-      equipos = null; // goleadas.js maneja el respaldo con id crudo
+      equipos = null;
     }
   }
 
-  // --- Indicador de datos no actualizados (offline) ---
+  // --- Indicador offline ---
   if (usandoCacheGames || usandoCacheTeams) {
     statusBar.textContent =
       "⚠ Mostrando datos guardados localmente (no actualizados). La conexión con el servidor falló.";

@@ -45,6 +45,8 @@ async function login(email, password) {
 /**
  * Fetch genérico autenticado con backoff exponencial para 429/500.
  * Lanza ApiError con status 401 si el token expiró/es inválido (sin reintentar).
+ * Usa cache: "no-store" para evitar que el navegador sirva respuestas cacheadas
+ * y oculte errores reales de autenticación (304 en lugar de 401).
  *
  * @param {string} endpoint - ej. "/get/games"
  * @param {string} token - JWT
@@ -54,10 +56,12 @@ async function authenticatedFetch(endpoint, token, onRetry) {
   let attempt = 0;
 
   while (attempt <= MAX_RETRIES) {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${BASE_URL}${endpoint}?_=${Date.now()}`, {
       headers: {
         Authorization: `Bearer ${token}`,
+        "Cache-Control": "no-cache",
       },
+      cache: "no-store",
     });
 
     if (response.ok) {

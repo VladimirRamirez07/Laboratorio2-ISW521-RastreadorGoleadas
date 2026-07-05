@@ -30,7 +30,7 @@
   <!-- ===== PANTALLA PRINCIPAL (DASHBOARD) ===== -->
   <section id="app-screen" class="screen hidden">
     <header class="app-header">
-      <h1>Rastreador de Goleadas</h1>
+      <h1>⚽ Rastreador de Goleadas</h1>
       <div class="header-actions">
         <span id="user-name"></span>
         <button id="logout-btn" class="btn-secondary">Cerrar sesión</button>
@@ -42,7 +42,12 @@
 
       <div class="summary-bar">
         <span id="total-goleadas">Total de goleadas: --</span>
-        <button id="reload-btn" class="btn-secondary">Recargar datos</button>
+        <div class="actions-group">
+          <button id="reload-btn" class="btn-secondary">Recargar datos</button>
+          <button id="test-401-btn" class="btn-test" title="Simular sesión expirada (401)">🔑 Probar 401</button>
+          <button id="test-500-btn" class="btn-test" title="Simular error de servidor (500)">💥 Probar 500</button>
+          <button id="test-429-btn" class="btn-test" title="Simular límite de tasa (429)">⏱ Probar 429</button>
+        </div>
       </div>
 
       <div id="loading-indicator" class="loading hidden">Cargando partidos...</div>

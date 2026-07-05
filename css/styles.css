@@ -288,3 +288,24 @@ body {
   font-size: 0.85rem;
   z-index: 999;
 }
+/* === BOTONES DE PRUEBA PARA DEFENSA TÉCNICA === */
+.actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-test {
+  background-color: transparent;
+  border: 1px solid #3a2f12;
+  color: #f0c674;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.btn-test:hover {
+  background-color: #3a2f12;
+}
