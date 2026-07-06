@@ -1,7 +1,4 @@
 // js/main.js
-// Orquestador: conecta DOM, eventos y los módulos de lógica/datos.
-// Es el único archivo que manipula el DOM directamente.
-
 import { getGames, getTeams, ApiError } from "./api.js";
 import {
   attemptLogin,
@@ -19,36 +16,49 @@ import {
 } from "./storage.js";
 import { obtenerGoleadas, enriquecerConEquipos } from "./goleadas.js";
 
-// ===== REFERENCIAS AL DOM =====
-const loginScreen = document.getElementById("login-screen");
-const appScreen = document.getElementById("app-screen");
-const loginForm = document.getElementById("login-form");
-const loginBtn = document.getElementById("login-btn");
-const loginError = document.getElementById("login-error");
-const userNameEl = document.getElementById("user-name");
-const logoutBtn = document.getElementById("logout-btn");
-const reloadBtn = document.getElementById("reload-btn");
-const goleadasList = document.getElementById("goleadas-list");
-const totalGoleadasEl = document.getElementById("total-goleadas");
-const loadingIndicator = document.getElementById("loading-indicator");
-const emptyMsg = document.getElementById("empty-msg");
-const statusBar = document.getElementById("status-bar");
-const sessionModal = document.getElementById("session-modal");
-const sessionModalBtn = document.getElementById("session-modal-btn");
-const retryToast = document.getElementById("retry-toast");
-const retryToastText = document.getElementById("retry-toast-text");
-const test401Btn = document.getElementById("test-401-btn");
-const test500Btn = document.getElementById("test-500-btn");
-const test429Btn = document.getElementById("test-429-btn");
+// ===== DOM =====
+const loginScreen        = document.getElementById("login-screen");
+const appScreen          = document.getElementById("app-screen");
+const loginForm          = document.getElementById("login-form");
+const loginBtn           = document.getElementById("login-btn");
+const loginError         = document.getElementById("login-error");
+const userNameEl         = document.getElementById("user-name");
+const lastUpdateEl       = document.getElementById("last-update");
+const dataBadgeEl        = document.getElementById("data-badge");
+const logoutBtn          = document.getElementById("logout-btn");
+const reloadBtn          = document.getElementById("reload-btn");
+const searchInput        = document.getElementById("search-input");
+const sortSelect         = document.getElementById("sort-select");
+const goleadasList       = document.getElementById("goleadas-list");
+const totalGoleadasEl    = document.getElementById("total-goleadas");
+const loadingIndicator   = document.getElementById("loading-indicator");
+const emptyMsg           = document.getElementById("empty-msg");
+const statusBar          = document.getElementById("status-bar");
+const sessionModal       = document.getElementById("session-modal");
+const sessionModalBtn    = document.getElementById("session-modal-btn");
+const logoutModal        = document.getElementById("logout-modal");
+const logoutConfirmBtn   = document.getElementById("logout-confirm-btn");
+const logoutCancelBtn    = document.getElementById("logout-cancel-btn");
+const retryToast         = document.getElementById("retry-toast");
+const retryToastText     = document.getElementById("retry-toast-text");
+const test401Btn         = document.getElementById("test-401-btn");
+const test500Btn         = document.getElementById("test-500-btn");
+const test429Btn         = document.getElementById("test-429-btn");
 
 const BASE_PROXY = "http://localhost:3000/proxy";
-let currentUserName = "";
+const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutos
 
-// ===== NAVEGACIÓN ENTRE PANTALLAS =====
+let currentUserName = "";
+let goleadasCompletas = []; // cache en memoria para filtrar/ordenar sin refetch
+let autoRefreshTimer = null;
+
+// ===== NAVEGACION =====
 function showLogin() {
   loginScreen.classList.remove("hidden");
   appScreen.classList.add("hidden");
   sessionModal.classList.add("hidden");
+  logoutModal.classList.add("hidden");
+  detenerAutoRefresh();
 }
 
 function showApp() {
@@ -63,7 +73,7 @@ loginForm.addEventListener("submit", async (event) => {
   loginBtn.disabled = true;
   loginBtn.textContent = "Ingresando...";
 
-  const email = document.getElementById("email").value.trim();
+  const email    = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
 
   try {
@@ -73,29 +83,37 @@ loginForm.addEventListener("submit", async (event) => {
     userNameEl.textContent = currentUserName;
     showApp();
     await cargarGoleadas();
+    iniciarAutoRefresh();
   } catch (err) {
-    if (err instanceof ApiError) {
-      loginError.textContent = err.message;
-    } else {
-      loginError.textContent =
-        "No se pudo conectar con el servidor. Intenta de nuevo.";
-    }
+    loginError.textContent =
+      err instanceof ApiError
+        ? err.message
+        : "No se pudo conectar con el servidor. Intenta de nuevo.";
   } finally {
     loginBtn.disabled = false;
-    loginBtn.textContent = "Iniciar sesión";
+    loginBtn.textContent = "Iniciar sesion";
   }
 });
 
-// ===== LOGOUT =====
+// ===== LOGOUT CON CONFIRMACION =====
 logoutBtn.addEventListener("click", () => {
+  logoutModal.classList.remove("hidden");
+});
+
+logoutCancelBtn.addEventListener("click", () => {
+  logoutModal.classList.add("hidden");
+});
+
+logoutConfirmBtn.addEventListener("click", () => {
   logout();
   showLogin();
   loginForm.reset();
 });
 
-// ===== SESIÓN EXPIRADA (401) — sin reload =====
+// ===== SESION EXPIRADA =====
 onSessionExpired(() => {
   sessionModal.classList.remove("hidden");
+  detenerAutoRefresh();
 });
 
 sessionModalBtn.addEventListener("click", () => {
@@ -104,101 +122,81 @@ sessionModalBtn.addEventListener("click", () => {
   loginForm.reset();
 });
 
-// ===== RECARGAR DATOS =====
-reloadBtn.addEventListener("click", () => {
-  cargarGoleadas();
-});
-
-// ===== BOTONES DE PRUEBA PARA DEFENSA TÉCNICA =====
-
-// Prueba 401: llama al endpoint real del proxy que devuelve 401
-// Demuestra que la app detecta el error y muestra el modal sin reload
-test401Btn.addEventListener("click", async () => {
-  const token = getToken();
-  try {
-    const response = await fetch(`${BASE_PROXY}/test/401`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (response.status === 401) {
-      handleSessionExpired();
+// ===== AUTO-REFRESH =====
+function iniciarAutoRefresh() {
+  detenerAutoRefresh();
+  autoRefreshTimer = setInterval(async () => {
+    if (isAuthenticated()) {
+      await cargarGoleadas();
     }
-  } catch (err) {
-    console.error("Error en prueba 401:", err);
+  }, AUTO_REFRESH_MS);
+}
+
+function detenerAutoRefresh() {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
   }
+}
+
+// ===== RECARGA MANUAL =====
+reloadBtn.addEventListener("click", () => cargarGoleadas());
+
+// ===== BUSQUEDA EN TIEMPO REAL =====
+searchInput.addEventListener("input", () => {
+  aplicarFiltroYOrden();
 });
 
-// Prueba 500: llama al endpoint real del proxy que devuelve 500
-// Demuestra el backoff exponencial y el fallback al caché offline
-test500Btn.addEventListener("click", async () => {
-  const token = getToken();
-  let attempt = 0;
-  const maxRetries = 4;
-  const baseDelay = 1000;
-
-  const tryFetch = async () => {
-    const response = await fetch(`${BASE_PROXY}/test/500`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (response.status === 500) {
-      if (attempt < maxRetries) {
-        const delayMs = baseDelay * Math.pow(2, attempt);
-        mostrarRetryToast(attempt + 1, delayMs, 500);
-        attempt++;
-        await new Promise((r) => setTimeout(r, delayMs));
-        await tryFetch();
-      } else {
-        const cached = getFromCache("games");
-        if (cached) {
-          statusBar.textContent =
-            "⚠ Mostrando datos guardados localmente (no actualizados). El servidor falló tras 4 reintentos.";
-          statusBar.classList.remove("hidden");
-        }
-      }
-    }
-  };
-
-  await tryFetch();
+// ===== ORDENAMIENTO =====
+sortSelect.addEventListener("change", () => {
+  aplicarFiltroYOrden();
 });
 
-// Prueba 429: llama al endpoint real del proxy que devuelve 429
-// Demuestra el countdown visible del rate limit
-test429Btn.addEventListener("click", async () => {
-  const token = getToken();
-  let attempt = 0;
-  const maxRetries = 4;
-  const baseDelay = 1000;
+function aplicarFiltroYOrden() {
+  const query = searchInput.value.trim().toLowerCase();
+  const criterio = sortSelect.value;
 
-  const tryFetch = async () => {
-    const response = await fetch(`${BASE_PROXY}/test/429`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  let resultado = goleadasCompletas.filter((p) => {
+    const localNombre = (p.equipoLocal.name_en || "").toLowerCase();
+    const visitanteNombre = (p.equipoVisitante.name_en || "").toLowerCase();
+    return localNombre.includes(query) || visitanteNombre.includes(query);
+  });
 
-    if (response.status === 429) {
-      if (attempt < maxRetries) {
-        const delayMs = baseDelay * Math.pow(2, attempt);
-        mostrarRetryToast(attempt + 1, delayMs, 429);
-        attempt++;
-        await new Promise((r) => setTimeout(r, delayMs));
-        await tryFetch();
-      }
-    }
-  };
+  if (criterio === "fecha") {
+    resultado = [...resultado].sort(
+      (a, b) => new Date(a.local_date) - new Date(b.local_date)
+    );
+  } else {
+    resultado = [...resultado].sort((a, b) => b.diferencia - a.diferencia);
+  }
 
-  await tryFetch();
-});
+  renderGoleadas(resultado);
+}
 
-// ===== COUNTDOWN VISUAL PARA BACKOFF (429 / 500) =====
+// ===== TIMESTAMP DE ULTIMA ACTUALIZACION =====
+function actualizarTimestamp(desdeCache) {
+  const ahora = new Date();
+  const hora  = ahora.toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" });
+  lastUpdateEl.textContent = `Actualizado: ${hora}`;
+
+  dataBadgeEl.classList.remove("hidden", "live", "cache");
+  if (desdeCache) {
+    dataBadgeEl.textContent = "Cache";
+    dataBadgeEl.classList.add("cache");
+  } else {
+    dataBadgeEl.textContent = "En vivo";
+    dataBadgeEl.classList.add("live");
+  }
+}
+
+// ===== TOAST BACKOFF =====
 function mostrarRetryToast(attempt, delayMs, status) {
   let secondsLeft = Math.ceil(delayMs / 1000);
   retryToast.classList.remove("hidden");
 
-  const motivo =
-    status === 429
-      ? "límite de peticiones alcanzado"
-      : "error del servidor";
-
-  retryToastText.textContent = `Reintentando (${motivo})... intento ${attempt}, próximo en ${secondsLeft}s`;
+  const motivo = status === 429 ? "limite de peticiones alcanzado" : "error del servidor";
+  retryToastText.textContent =
+    `Reintentando (${motivo})... intento ${attempt}, proximo en ${secondsLeft}s`;
 
   const intervalId = setInterval(() => {
     secondsLeft -= 1;
@@ -207,11 +205,12 @@ function mostrarRetryToast(attempt, delayMs, status) {
       retryToast.classList.add("hidden");
       return;
     }
-    retryToastText.textContent = `Reintentando (${motivo})... intento ${attempt}, próximo en ${secondsLeft}s`;
+    retryToastText.textContent =
+      `Reintentando (${motivo})... intento ${attempt}, proximo en ${secondsLeft}s`;
   }, 1000);
 }
 
-// ===== CARGA Y RENDER DE GOLEADAS =====
+// ===== CARGA DE DATOS =====
 async function cargarGoleadas() {
   loadingIndicator.classList.remove("hidden");
   emptyMsg.classList.add("hidden");
@@ -220,11 +219,10 @@ async function cargarGoleadas() {
 
   const token = getToken();
   let partidos = null;
-  let equipos = null;
+  let equipos  = null;
   let usandoCacheGames = false;
   let usandoCacheTeams = false;
 
-  // --- Obtener partidos ---
   try {
     partidos = await getGames(token, mostrarRetryToast);
     saveToCache("games", partidos);
@@ -247,7 +245,6 @@ async function cargarGoleadas() {
     }
   }
 
-  // --- Obtener equipos ---
   try {
     equipos = await getTeams(token, mostrarRetryToast);
     saveToCache("teams", equipos);
@@ -266,36 +263,40 @@ async function cargarGoleadas() {
     }
   }
 
-  // --- Indicador offline ---
-  if (usandoCacheGames || usandoCacheTeams) {
+  const desdeCache = usandoCacheGames || usandoCacheTeams;
+
+  if (desdeCache) {
     statusBar.textContent =
-      "⚠ Mostrando datos guardados localmente (no actualizados). La conexión con el servidor falló.";
+      "Mostrando datos guardados localmente (no actualizados). La conexion con el servidor fallo.";
     statusBar.classList.remove("hidden");
   }
 
-  // --- Procesar y renderizar ---
+  actualizarTimestamp(desdeCache);
+
   const goleadas = obtenerGoleadas(partidos);
-  const goleadasConEquipos = enriquecerConEquipos(goleadas, equipos);
+  goleadasCompletas  = enriquecerConEquipos(goleadas, equipos);
 
   loadingIndicator.classList.add("hidden");
-  renderGoleadas(goleadasConEquipos);
+  aplicarFiltroYOrden();
 }
 
+// ===== RENDER =====
 function renderGoleadas(goleadas) {
   totalGoleadasEl.textContent = `Total de goleadas: ${goleadas.length}`;
 
   if (goleadas.length === 0) {
-    emptyMsg.textContent =
-      "No se encontraron goleadas (diferencia ≥ 3 goles).";
+    emptyMsg.textContent = "No se encontraron goleadas.";
     emptyMsg.classList.remove("hidden");
+    goleadasList.innerHTML = "";
     return;
   }
 
-  goleadasList.innerHTML = goleadas.map((p) => crearTarjetaHTML(p)).join("");
+  emptyMsg.classList.add("hidden");
+  goleadasList.innerHTML = goleadas.map((p, i) => crearTarjetaHTML(p, i + 1)).join("");
 }
 
-function crearTarjetaHTML(partido) {
-  const local = partido.equipoLocal;
+function crearTarjetaHTML(partido, rank) {
+  const local     = partido.equipoLocal;
   const visitante = partido.equipoVisitante;
 
   const localHTML = local._esRespaldo
@@ -306,26 +307,99 @@ function crearTarjetaHTML(partido) {
     ? `<span class="team-fallback">${visitante.name_en}</span>`
     : `${visitante.flag ? `<img src="${visitante.flag}" alt="${visitante.name_en}" />` : ""}<span>${visitante.name_en}</span>`;
 
+  const fecha = partido.local_date
+    ? new Date(partido.local_date).toLocaleDateString("es-CR", {
+        day: "2-digit", month: "short", year: "numeric",
+      })
+    : "";
+
   return `
     <li class="goleada-card">
+      <span class="goleada-rank">#${rank}</span>
       <div class="goleada-teams">
         ${localHTML}
         <span class="vs">vs</span>
         ${visitanteHTML}
       </div>
-      <div class="goleada-score">${partido.home_score} - ${partido.away_score}</div>
-      <div class="goleada-diff">+${partido.diferencia} goles</div>
+      <div class="goleada-info">
+        <span class="goleada-score">${partido.home_score} - ${partido.away_score}</span>
+        <span class="goleada-diff">+${partido.diferencia} goles</span>
+        ${fecha ? `<span class="goleada-date">${fecha}</span>` : ""}
+      </div>
     </li>
   `;
 }
 
-// ===== INICIALIZACIÓN =====
+// ===== BOTONES DE PRUEBA =====
+test401Btn.addEventListener("click", async () => {
+  const token = getToken();
+  const response = await fetch(`${BASE_PROXY}/test/401`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (response.status === 401) handleSessionExpired();
+});
+
+test500Btn.addEventListener("click", async () => {
+  const token = getToken();
+  let attempt = 0;
+  const maxRetries = 4;
+  const baseDelay  = 1000;
+
+  const tryFetch = async () => {
+    const response = await fetch(`${BASE_PROXY}/test/500`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 500) {
+      if (attempt < maxRetries) {
+        const delayMs = baseDelay * Math.pow(2, attempt);
+        mostrarRetryToast(attempt + 1, delayMs, 500);
+        attempt++;
+        await new Promise((r) => setTimeout(r, delayMs));
+        await tryFetch();
+      } else {
+        const cached = getFromCache("games");
+        if (cached) {
+          statusBar.textContent =
+            "Mostrando datos guardados localmente (no actualizados). El servidor fallo tras 4 reintentos.";
+          statusBar.classList.remove("hidden");
+        }
+      }
+    }
+  };
+  await tryFetch();
+});
+
+test429Btn.addEventListener("click", async () => {
+  const token = getToken();
+  let attempt = 0;
+  const maxRetries = 4;
+  const baseDelay  = 1000;
+
+  const tryFetch = async () => {
+    const response = await fetch(`${BASE_PROXY}/test/429`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.status === 429) {
+      if (attempt < maxRetries) {
+        const delayMs = baseDelay * Math.pow(2, attempt);
+        mostrarRetryToast(attempt + 1, delayMs, 429);
+        attempt++;
+        await new Promise((r) => setTimeout(r, delayMs));
+        await tryFetch();
+      }
+    }
+  };
+  await tryFetch();
+});
+
+// ===== INICIALIZACION =====
 function init() {
   if (isAuthenticated()) {
     currentUserName = getUserName();
     userNameEl.textContent = currentUserName;
     showApp();
     cargarGoleadas();
+    iniciarAutoRefresh();
   } else {
     showLogin();
   }
