@@ -15,41 +15,42 @@ import {
   getUserName,
 } from "./storage.js";
 import { obtenerGoleadas, enriquecerConEquipos } from "./goleadas.js";
+import { inicializarChat, construirChatUI } from "./chat.js";
 
 // ===== DOM =====
-const loginScreen        = document.getElementById("login-screen");
-const appScreen          = document.getElementById("app-screen");
-const loginForm          = document.getElementById("login-form");
-const loginBtn           = document.getElementById("login-btn");
-const loginError         = document.getElementById("login-error");
-const userNameEl         = document.getElementById("user-name");
-const lastUpdateEl       = document.getElementById("last-update");
-const dataBadgeEl        = document.getElementById("data-badge");
-const logoutBtn          = document.getElementById("logout-btn");
-const reloadBtn          = document.getElementById("reload-btn");
-const searchInput        = document.getElementById("search-input");
-const sortSelect         = document.getElementById("sort-select");
-const goleadasList       = document.getElementById("goleadas-list");
-const totalGoleadasEl    = document.getElementById("total-goleadas");
-const loadingIndicator   = document.getElementById("loading-indicator");
-const emptyMsg           = document.getElementById("empty-msg");
-const statusBar          = document.getElementById("status-bar");
-const sessionModal       = document.getElementById("session-modal");
-const sessionModalBtn    = document.getElementById("session-modal-btn");
-const logoutModal        = document.getElementById("logout-modal");
-const logoutConfirmBtn   = document.getElementById("logout-confirm-btn");
-const logoutCancelBtn    = document.getElementById("logout-cancel-btn");
-const retryToast         = document.getElementById("retry-toast");
-const retryToastText     = document.getElementById("retry-toast-text");
-const test401Btn         = document.getElementById("test-401-btn");
-const test500Btn         = document.getElementById("test-500-btn");
-const test429Btn         = document.getElementById("test-429-btn");
+const loginScreen      = document.getElementById("login-screen");
+const appScreen        = document.getElementById("app-screen");
+const loginForm        = document.getElementById("login-form");
+const loginBtn         = document.getElementById("login-btn");
+const loginError       = document.getElementById("login-error");
+const userNameEl       = document.getElementById("user-name");
+const lastUpdateEl     = document.getElementById("last-update");
+const dataBadgeEl      = document.getElementById("data-badge");
+const logoutBtn        = document.getElementById("logout-btn");
+const reloadBtn        = document.getElementById("reload-btn");
+const searchInput      = document.getElementById("search-input");
+const sortSelect       = document.getElementById("sort-select");
+const goleadasList     = document.getElementById("goleadas-list");
+const totalGoleadasEl  = document.getElementById("total-goleadas");
+const loadingIndicator = document.getElementById("loading-indicator");
+const emptyMsg         = document.getElementById("empty-msg");
+const statusBar        = document.getElementById("status-bar");
+const sessionModal     = document.getElementById("session-modal");
+const sessionModalBtn  = document.getElementById("session-modal-btn");
+const logoutModal      = document.getElementById("logout-modal");
+const logoutConfirmBtn = document.getElementById("logout-confirm-btn");
+const logoutCancelBtn  = document.getElementById("logout-cancel-btn");
+const retryToast       = document.getElementById("retry-toast");
+const retryToastText   = document.getElementById("retry-toast-text");
+const test401Btn       = document.getElementById("test-401-btn");
+const test500Btn       = document.getElementById("test-500-btn");
+const test429Btn       = document.getElementById("test-429-btn");
 
 const BASE_PROXY = "http://localhost:3000/proxy";
-const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutos
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
 let currentUserName = "";
-let goleadasCompletas = []; // cache en memoria para filtrar/ordenar sin refetch
+let goleadasCompletas = [];
 let autoRefreshTimer = null;
 
 // ===== NAVEGACION =====
@@ -153,11 +154,11 @@ sortSelect.addEventListener("change", () => {
 });
 
 function aplicarFiltroYOrden() {
-  const query = searchInput.value.trim().toLowerCase();
+  const query    = searchInput.value.trim().toLowerCase();
   const criterio = sortSelect.value;
 
   let resultado = goleadasCompletas.filter((p) => {
-    const localNombre = (p.equipoLocal.name_en || "").toLowerCase();
+    const localNombre     = (p.equipoLocal.name_en || "").toLowerCase();
     const visitanteNombre = (p.equipoVisitante.name_en || "").toLowerCase();
     return localNombre.includes(query) || visitanteNombre.includes(query);
   });
@@ -173,10 +174,12 @@ function aplicarFiltroYOrden() {
   renderGoleadas(resultado);
 }
 
-// ===== TIMESTAMP DE ULTIMA ACTUALIZACION =====
+// ===== TIMESTAMP =====
 function actualizarTimestamp(desdeCache) {
   const ahora = new Date();
-  const hora  = ahora.toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" });
+  const hora  = ahora.toLocaleTimeString("es-CR", {
+    hour: "2-digit", minute: "2-digit",
+  });
   lastUpdateEl.textContent = `Actualizado: ${hora}`;
 
   dataBadgeEl.classList.remove("hidden", "live", "cache");
@@ -194,7 +197,10 @@ function mostrarRetryToast(attempt, delayMs, status) {
   let secondsLeft = Math.ceil(delayMs / 1000);
   retryToast.classList.remove("hidden");
 
-  const motivo = status === 429 ? "limite de peticiones alcanzado" : "error del servidor";
+  const motivo = status === 429
+    ? "limite de peticiones alcanzado"
+    : "error del servidor";
+
   retryToastText.textContent =
     `Reintentando (${motivo})... intento ${attempt}, proximo en ${secondsLeft}s`;
 
@@ -273,8 +279,10 @@ async function cargarGoleadas() {
 
   actualizarTimestamp(desdeCache);
 
-  const goleadas = obtenerGoleadas(partidos);
-  goleadasCompletas  = enriquecerConEquipos(goleadas, equipos);
+  const goleadas    = obtenerGoleadas(partidos);
+  goleadasCompletas = enriquecerConEquipos(goleadas, equipos);
+
+  inicializarChat(goleadasCompletas);
 
   loadingIndicator.classList.add("hidden");
   aplicarFiltroYOrden();
@@ -292,7 +300,9 @@ function renderGoleadas(goleadas) {
   }
 
   emptyMsg.classList.add("hidden");
-  goleadasList.innerHTML = goleadas.map((p, i) => crearTarjetaHTML(p, i + 1)).join("");
+  goleadasList.innerHTML = goleadas
+    .map((p, i) => crearTarjetaHTML(p, i + 1))
+    .join("");
 }
 
 function crearTarjetaHTML(partido, rank) {
@@ -394,6 +404,8 @@ test429Btn.addEventListener("click", async () => {
 
 // ===== INICIALIZACION =====
 function init() {
+  construirChatUI();
+
   if (isAuthenticated()) {
     currentUserName = getUserName();
     userNameEl.textContent = currentUserName;
