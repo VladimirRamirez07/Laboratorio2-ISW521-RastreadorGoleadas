@@ -8,33 +8,24 @@
 </head>
 <body>
 
-  <!-- PANTALLA DE LOGIN -->
-  <section id="login-screen" class="screen">
-    <div class="login-card">
-      <h1>Rastreador de Goleadas</h1>
-      <p class="subtitle">Mundial 2026 · ISW-521</p>
-      <form id="login-form" novalidate>
-        <label for="email">Correo electrónico</label>
-        <input type="email" id="email" name="email" required autocomplete="email" />
-        <label for="password">Contraseña</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password" />
-        <button type="submit" id="login-btn">Iniciar sesión</button>
-        <p id="login-error" class="error-msg" role="alert"></p>
-      </form>
+  <!-- NAVBAR -->
+  <nav class="app-nav">
+    <span class="nav-brand">⚽ Rastreador de Goleadas</span>
+    <div class="nav-links">
+      <button id="nav-dashboard" class="nav-btn active">Dashboard</button>
+      <button id="nav-detalle"   class="nav-btn">Detalle</button>
+      <button id="nav-stats"     class="nav-btn">Estadísticas</button>
+      <button id="nav-ia"        class="nav-btn">Analista IA</button>
+      <button id="nav-grupos"    class="nav-btn">Por Grupos</button>
     </div>
-  </section>
+  </nav>
 
-  <!-- PANTALLA PRINCIPAL -->
-  <section id="app-screen" class="screen hidden">
+  <!-- ===== PANTALLA 1: DASHBOARD ===== -->
+  <section id="screen-dashboard" class="screen">
     <header class="app-header">
-      <h1>Rastreador de Goleadas</h1>
-      <div class="header-right">
-        <div class="header-meta">
-          <span id="user-name"></span>
-          <span id="last-update" class="last-update"></span>
-          <span id="data-badge" class="data-badge hidden"></span>
-        </div>
-        <button id="logout-btn" class="btn-secondary">Cerrar sesion</button>
+      <div class="header-meta">
+        <span id="last-update" class="last-update"></span>
+        <span id="data-badge" class="data-badge hidden"></span>
       </div>
     </header>
 
@@ -52,7 +43,6 @@
             <option value="fecha">Fecha del partido</option>
           </select>
           <button id="reload-btn" class="btn-secondary">Recargar datos</button>
-          <button id="test-401-btn" class="btn-test">Probar 401</button>
           <button id="test-500-btn" class="btn-test">Probar 500</button>
           <button id="test-429-btn" class="btn-test">Probar 429</button>
         </div>
@@ -64,28 +54,59 @@
     </main>
   </section>
 
-  <!-- MODAL: SESION EXPIRADA (401) -->
-  <div id="session-modal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <h2>Sesion expirada</h2>
-      <p>Tu sesion ha expirado o el token ya no es valido. Por favor, vuelve a iniciar sesion.</p>
-      <button id="session-modal-btn">Volver a iniciar sesion</button>
-    </div>
-  </div>
-
-  <!-- MODAL: CONFIRMACION DE CIERRE DE SESION -->
-  <div id="logout-modal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <h2>Cerrar sesion</h2>
-      <p>Esta seguro que desea salir del sistema?</p>
-      <div class="modal-actions">
-        <button id="logout-confirm-btn" class="btn-danger">Si, salir</button>
-        <button id="logout-cancel-btn" class="btn-secondary">Cancelar</button>
+  <!-- ===== PANTALLA 2: DETALLE DE PARTIDO ===== -->
+  <section id="screen-detalle" class="screen hidden">
+    <main class="app-main">
+      <div id="detalle-contenido">
+        <p class="empty-msg">Selecciona un partido desde el Dashboard o la vista Por Grupos.</p>
       </div>
-    </div>
-  </div>
+    </main>
+  </section>
 
-  <!-- TOAST: RETRY / BACKOFF -->
+  <!-- ===== PANTALLA 3: ESTADÍSTICAS ===== -->
+  <section id="screen-stats" class="screen hidden">
+    <main class="app-main">
+      <h2 class="screen-title">Estadísticas del Torneo</h2>
+      <div id="stats-contenido"></div>
+    </main>
+  </section>
+
+  <!-- ===== PANTALLA 4: ANALISTA IA ===== -->
+  <section id="screen-ia" class="screen hidden">
+    <main class="app-main app-main--ia">
+      <div class="ia-panel">
+        <div class="ia-panel-header">
+          <span class="chat-title">Analista IA - Mundial 2026</span>
+          <div class="chat-header-actions">
+            <select id="ia-modelo-select" class="modelo-select">
+              <option value="groq">Groq (Llama 3.3)</option>
+              <option value="cerebras">Cerebras (Llama 3.3)</option>
+            </select>
+            <button id="ia-chat-clear-btn" class="chat-clear-btn">Limpiar</button>
+          </div>
+        </div>
+        <div id="ia-chat-messages" class="chat-messages ia-chat-messages">
+          <div class="chat-msg assistant">
+            Hola. Soy tu analista del Mundial 2026. Tengo acceso a todas las goleadas del torneo. Puedes preguntarme sobre equipos, resultados, estadisticas o cualquier analisis que necesites.
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <textarea id="ia-chat-input" class="chat-input" placeholder="Pregunta sobre los partidos..." rows="2"></textarea>
+          <button id="ia-chat-send-btn" class="chat-send-btn">Enviar</button>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- ===== PANTALLA 5: POR GRUPOS ===== -->
+  <section id="screen-grupos" class="screen hidden">
+    <main class="app-main">
+      <h2 class="screen-title">Goleadas por Grupo</h2>
+      <div id="grupos-contenido"></div>
+    </main>
+  </section>
+
+  <!-- TOAST BACKOFF -->
   <div id="retry-toast" class="retry-toast hidden">
     <p id="retry-toast-text"></p>
   </div>

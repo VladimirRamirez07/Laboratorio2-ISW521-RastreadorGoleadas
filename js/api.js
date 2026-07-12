@@ -5,7 +5,6 @@ const BASE_URL = "http://localhost:3000/proxy";
 const MAX_RETRIES = 4;
 const BASE_DELAY_MS = 1000; // 1s, 2s, 4s, 8s
 
-// Error personalizado para distinguir tipos de fallo en capas superiores
 class ApiError extends Error {
   constructor(message, status) {
     super(message);
@@ -19,48 +18,15 @@ function sleep(ms) {
 }
 
 /**
- * Hace login contra /auth/authenticate
- * @param {string} email
- * @param {string} password
- * @returns {Promise<{token: string, user: object}>}
+ * Fetch genérico con backoff exponencial para 429/500.
+ * Sin JWT — las peticiones van sin Authorization header.
  */
-async function login(email, password) {
-  const response = await fetch(`${BASE_URL}/auth/authenticate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (!response.ok) {
-    if (response.status === 400) {
-      throw new ApiError("Credenciales inválidas", 400);
-    }
-    throw new ApiError(`Error de login: ${response.status}`, response.status);
-  }
-
-  const data = await response.json();
-  return data; // { user, token }
-}
-
-/**
- * Fetch genérico autenticado con backoff exponencial para 429/500.
- * Lanza ApiError con status 401 si el token expiró/es inválido (sin reintentar).
- * Usa cache: "no-store" para evitar que el navegador sirva respuestas cacheadas
- * y oculte errores reales de autenticación (304 en lugar de 401).
- *
- * @param {string} endpoint - ej. "/get/games"
- * @param {string} token - JWT
- * @param {function} onRetry - callback(attempt, delayMs, status) para mostrar countdown en UI
- */
-async function authenticatedFetch(endpoint, token, onRetry) {
+async function apiFetch(endpoint, onRetry) {
   let attempt = 0;
 
   while (attempt <= MAX_RETRIES) {
     const response = await fetch(`${BASE_URL}${endpoint}?_=${Date.now()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Cache-Control": "no-cache",
-      },
+      headers: { "Cache-Control": "no-cache" },
       cache: "no-store",
     });
 
@@ -68,12 +34,10 @@ async function authenticatedFetch(endpoint, token, onRetry) {
       return await response.json();
     }
 
-    // 401: no se reintenta, se delega a quien llama (auth.js maneja sesión expirada)
     if (response.status === 401) {
-      throw new ApiError("Sesión expirada", 401);
+      throw new ApiError("No autorizado", 401);
     }
 
-    // 429 o 500: backoff exponencial
     if (response.status === 429 || response.status === 500) {
       if (attempt === MAX_RETRIES) {
         throw new ApiError(
@@ -81,39 +45,63 @@ async function authenticatedFetch(endpoint, token, onRetry) {
           response.status
         );
       }
-
       const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
-
       if (typeof onRetry === "function") {
         onRetry(attempt + 1, delayMs, response.status);
       }
-
       await sleep(delayMs);
       attempt++;
       continue;
     }
 
-    // Cualquier otro código de error no contemplado
     throw new ApiError(`Error inesperado: ${response.status}`, response.status);
   }
 }
 
-/**
- * Obtiene todos los partidos.
- * La API devuelve { games: [...] }, extraemos el array directamente.
- */
-async function getGames(token, onRetry) {
-  const data = await authenticatedFetch("/get/games", token, onRetry);
+async function getGames(onRetry) {
+  const data = await apiFetch("/get/games", onRetry);
   return data.games || data;
 }
 
-/**
- * Obtiene todos los equipos.
- * La API devuelve { teams: [...] }, extraemos el array directamente.
- */
-async function getTeams(token, onRetry) {
-  const data = await authenticatedFetch("/get/teams", token, onRetry);
+async function getTeams(onRetry) {
+  const data = await apiFetch("/get/teams", onRetry);
   return data.teams || data;
 }
 
-export { login, getGames, getTeams, ApiError };
+/**
+ * Reintenta obtener equipos en segundo plano (Reto de Resiliencia 2.2).
+ * Cuando tiene éxito llama onSuccess(equipos) para re-renderizar sin recargar.
+ */
+async function getTeamsBackground(onRetry, onSuccess) {
+  let attempt = 0;
+
+  while (attempt <= MAX_RETRIES) {
+    await sleep(BASE_DELAY_MS * Math.pow(2, attempt));
+
+    try {
+      const response = await fetch(`${BASE_URL}/get/teams?_=${Date.now()}`, {
+        headers: { "Cache-Control": "no-cache" },
+        cache: "no-store",
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const equipos = json.teams || json;
+        if (typeof onSuccess === "function") onSuccess(equipos);
+        return;
+      }
+
+      if (response.status === 429 || response.status === 500) {
+        const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
+        if (typeof onRetry === "function") onRetry(attempt + 1, delayMs, response.status);
+      }
+
+    } catch {
+      // Error de red: seguir reintentando silenciosamente
+    }
+
+    attempt++;
+  }
+}
+
+export { getGames, getTeams, getTeamsBackground, ApiError };

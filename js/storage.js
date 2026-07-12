@@ -1,13 +1,8 @@
 // js/storage.js
-// Módulo de caché offline. Guarda y lee la última respuesta exitosa de cada endpoint.
+// Caché offline con localStorage. Sin token JWT.
 
 const STORAGE_PREFIX = "rastreador_goleadas_";
 
-/**
- * Guarda datos en localStorage junto con un timestamp.
- * @param {string} key - identificador del recurso, ej. "games" o "teams"
- * @param {any} data
- */
 function saveToCache(key, data) {
   const payload = {
     data,
@@ -16,15 +11,9 @@ function saveToCache(key, data) {
   localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(payload));
 }
 
-/**
- * Lee datos cacheados de localStorage.
- * @param {string} key
- * @returns {{data: any, cachedAt: string} | null}
- */
 function getFromCache(key) {
   const raw = localStorage.getItem(STORAGE_PREFIX + key);
   if (!raw) return null;
-
   try {
     return JSON.parse(raw);
   } catch {
@@ -32,40 +21,4 @@ function getFromCache(key) {
   }
 }
 
-/**
- * Guarda el token JWT en sessionStorage.
- * sessionStorage se borra al cerrar la pestaña (más seguro que localStorage).
- */
-function saveToken(token) {
-  sessionStorage.setItem(STORAGE_PREFIX + "token", token);
-}
-
-function getToken() {
-  return sessionStorage.getItem(STORAGE_PREFIX + "token");
-}
-
-function clearToken() {
-  sessionStorage.removeItem(STORAGE_PREFIX + "token");
-}
-
-/**
- * Guarda y recupera el nombre del usuario en sessionStorage.
- * Así el header muestra el nombre aunque el usuario recargue la página.
- */
-function saveUserName(name) {
-  sessionStorage.setItem(STORAGE_PREFIX + "username", name);
-}
-
-function getUserName() {
-  return sessionStorage.getItem(STORAGE_PREFIX + "username") || "";
-}
-
-export {
-  saveToCache,
-  getFromCache,
-  saveToken,
-  getToken,
-  clearToken,
-  saveUserName,
-  getUserName,
-};
+export { saveToCache, getFromCache };
