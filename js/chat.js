@@ -1,59 +1,23 @@
 // js/chat.js
-// Módulo de chat IA — funciona tanto flotante (dashboard) como pantalla completa.
+// Chat IA flotante — universal para los 5 subproyectos
+// Contexto se inyecta desde main.js con datos reales del torneo
 
 const BASE_PROXY = "http://localhost:3000/proxy";
 
-let historial = [];
-let contextoGoleadas = "";
-let modeloActual = "groq";
-let chatAbierto = false;
+let historial      = [];
+let contextoActual = "";
+let modeloActual   = "groq";
+let chatAbierto    = false;
 
-function inicializarChat(goleadas) {
-  if (!goleadas || goleadas.length === 0) {
-    contextoGoleadas = "No hay goleadas disponibles aun.";
-    return;
-  }
-
-  contextoGoleadas = goleadas
-    .map((p, i) => {
-      const local     = p.equipoLocal?.name_en || p.home_team_id;
-      const visitante = p.equipoVisitante?.name_en || p.away_team_id;
-      const fecha     = p.local_date
-        ? new Date(p.local_date).toLocaleDateString("es-CR", {
-            day: "2-digit", month: "short", year: "numeric",
-          })
-        : "Fecha desconocida";
-
-      const parsearGoleadores = (raw) => {
-        if (!raw || raw === "null" || raw === "NULL") return "No disponible";
-        try {
-          return raw
-            .replace(/^\{/, "").replace(/\}$/, "")
-            .split(",")
-            .map((g) => g.replace(/"/g, "").trim())
-            .filter(Boolean)
-            .join(", ") || "No disponible";
-        } catch { return "No disponible"; }
-      };
-
-      return `${i + 1}. ${local} ${p.home_score}-${p.away_score} ${visitante}
-   Diferencia: ${p.diferencia} goles | Fecha: ${fecha} | Grupo: ${p.group || "N/A"}
-   Goleadores ${local}: ${parsearGoleadores(p.home_scorers)}
-   Goleadores ${visitante}: ${parsearGoleadores(p.away_scorers)}`;
-    })
-    .join("\n\n");
-
-  historial = [];
+function inicializarChat(contexto) {
+  contextoActual = contexto || "";
 }
 
-// ===== CHAT FLOTANTE (dashboard) =====
 function construirChatUI() {
   const wrapper = document.createElement("div");
-  wrapper.id = "chat-wrapper";
+  wrapper.id    = "chat-wrapper";
   wrapper.innerHTML = `
-    <button id="chat-toggle-btn" class="chat-toggle-btn" title="Analista IA del Mundial">
-      Analista IA
-    </button>
+    <button id="chat-toggle-btn" class="chat-toggle-btn">Analista IA</button>
     <div id="chat-panel" class="chat-panel hidden">
       <div class="chat-header">
         <span class="chat-title">Analista IA - Mundial 2026</span>
@@ -68,57 +32,25 @@ function construirChatUI() {
       </div>
       <div id="chat-messages" class="chat-messages">
         <div class="chat-msg assistant">
-          Hola. Soy tu analista del Mundial 2026. Tengo acceso a todas las goleadas del torneo.
+          Hola. Soy tu analista del Mundial 2026. Tengo acceso a datos de goleadas, estadios y mas. Puedes preguntarme sobre cualquier pantalla del sistema.
         </div>
       </div>
       <div class="chat-input-area">
-        <textarea id="chat-input" class="chat-input" placeholder="Pregunta sobre los partidos..." rows="2"></textarea>
+        <textarea id="chat-input" class="chat-input" placeholder="Pregunta sobre el Mundial..." rows="2"></textarea>
         <button id="chat-send-btn" class="chat-send-btn">Enviar</button>
       </div>
     </div>
   `;
   document.body.appendChild(wrapper);
-  registrarEventosChat("chat-messages", "chat-input", "chat-send-btn", "chat-toggle-btn", "chat-panel", "chat-close-btn", "chat-clear-btn", "modelo-select");
-}
 
-// ===== CHAT PANTALLA COMPLETA (pantalla Analista IA) =====
-function inicializarChatPantallaCompleta() {
-  const mensajesEl = document.getElementById("ia-chat-messages");
-  const inputEl    = document.getElementById("ia-chat-input");
-  const sendBtn    = document.getElementById("ia-chat-send-btn");
-  const clearBtn   = document.getElementById("ia-chat-clear-btn");
-  const modeloSel  = document.getElementById("ia-modelo-select");
-
-  if (!mensajesEl) return;
-
-  clearBtn.addEventListener("click", () => {
-    historial = [];
-    mensajesEl.innerHTML = `<div class="chat-msg assistant">Conversacion reiniciada. Puedes hacerme nuevas preguntas sobre el Mundial 2026.</div>`;
-  });
-
-  modeloSel.addEventListener("change", () => {
-    modeloActual = modeloSel.value;
-  });
-
-  sendBtn.addEventListener("click", () => enviarMensajeEn(mensajesEl, inputEl, sendBtn));
-
-  inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      enviarMensajeEn(mensajesEl, inputEl, sendBtn);
-    }
-  });
-}
-
-function registrarEventosChat(mensajesId, inputId, sendId, toggleId, panelId, closeId, clearId, modeloId) {
-  const toggleBtn = document.getElementById(toggleId);
-  const panel     = document.getElementById(panelId);
-  const closeBtn  = document.getElementById(closeId);
-  const clearBtn  = document.getElementById(clearId);
-  const sendBtn   = document.getElementById(sendId);
-  const inputEl   = document.getElementById(inputId);
-  const modeloSel = document.getElementById(modeloId);
-  const mensajesEl = document.getElementById(mensajesId);
+  const toggleBtn  = document.getElementById("chat-toggle-btn");
+  const panel      = document.getElementById("chat-panel");
+  const closeBtn   = document.getElementById("chat-close-btn");
+  const clearBtn   = document.getElementById("chat-clear-btn");
+  const sendBtn    = document.getElementById("chat-send-btn");
+  const inputEl    = document.getElementById("chat-input");
+  const mensajesEl = document.getElementById("chat-messages");
+  const modeloSel  = document.getElementById("modelo-select");
 
   toggleBtn.addEventListener("click", () => {
     chatAbierto = !chatAbierto;
@@ -138,21 +70,21 @@ function registrarEventosChat(mensajesId, inputId, sendId, toggleId, panelId, cl
 
   modeloSel.addEventListener("change", () => { modeloActual = modeloSel.value; });
 
-  sendBtn.addEventListener("click", () => enviarMensajeEn(mensajesEl, inputEl, sendBtn));
+  sendBtn.addEventListener("click", () => enviarMensaje(mensajesEl, inputEl, sendBtn));
 
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      enviarMensajeEn(mensajesEl, inputEl, sendBtn);
+      enviarMensaje(mensajesEl, inputEl, sendBtn);
     }
   });
 }
 
-async function enviarMensajeEn(mensajesEl, inputEl, sendBtn) {
+async function enviarMensaje(mensajesEl, inputEl, sendBtn) {
   const texto = inputEl.value.trim();
   if (!texto) return;
 
-  inputEl.value = "";
+  inputEl.value    = "";
   sendBtn.disabled = true;
 
   agregarMensaje(mensajesEl, "user", texto);
@@ -166,9 +98,9 @@ async function enviarMensajeEn(mensajesEl, inputEl, sendBtn) {
       : `${BASE_PROXY}/ai/cerebras`;
 
     const response = await fetch(endpoint, {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: historial, context: contextoGoleadas }),
+      body:    JSON.stringify({ messages: historial, context: contextoActual }),
     });
 
     const data = await response.json();
@@ -181,7 +113,6 @@ async function enviarMensajeEn(mensajesEl, inputEl, sendBtn) {
 
     historial.push({ role: "assistant", content: data.reply });
     agregarMensaje(mensajesEl, "assistant", data.reply);
-
   } catch {
     eliminarTyping(mensajesEl, typingId);
     agregarMensaje(mensajesEl, "error", "No se pudo conectar con el modelo. Verifica que el proxy este corriendo.");
@@ -192,17 +123,17 @@ async function enviarMensajeEn(mensajesEl, inputEl, sendBtn) {
 }
 
 function agregarMensaje(contenedor, role, texto) {
-  const div = document.createElement("div");
-  div.className = `chat-msg ${role}`;
+  const div       = document.createElement("div");
+  div.className   = `chat-msg ${role}`;
   div.textContent = texto;
   contenedor.appendChild(div);
   scrollAlFinal(contenedor);
 }
 
 function agregarTyping(contenedor) {
-  const id = "typing-" + Date.now();
-  const div = document.createElement("div");
-  div.id = id;
+  const id      = "typing-" + Date.now();
+  const div     = document.createElement("div");
+  div.id        = id;
   div.className = "chat-msg assistant typing";
   div.textContent = "Escribiendo...";
   contenedor.appendChild(div);
@@ -219,4 +150,4 @@ function scrollAlFinal(contenedor) {
   if (contenedor) contenedor.scrollTop = contenedor.scrollHeight;
 }
 
-export { inicializarChat, construirChatUI, inicializarChatPantallaCompleta };
+export { inicializarChat, construirChatUI };

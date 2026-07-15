@@ -3,32 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rastreador de Goleadas - Mundial 2026</title>
+  <title>Mundial 2026</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
   <!-- NAVBAR -->
   <nav class="app-nav">
-    <span class="nav-brand">⚽ Rastreador de Goleadas</span>
+    <span class="nav-brand">Mundial 2026</span>
     <div class="nav-links">
-      <button id="nav-dashboard" class="nav-btn active">Dashboard</button>
-      <button id="nav-detalle"   class="nav-btn">Detalle</button>
-      <button id="nav-stats"     class="nav-btn">Estadísticas</button>
-      <button id="nav-ia"        class="nav-btn">Analista IA</button>
-      <button id="nav-grupos"    class="nav-btn">Por Grupos</button>
+      <button id="nav-goleadas"  class="nav-btn active">Goleadas</button>
+      <button id="nav-ruta"      class="nav-btn">Ruta del Campeon</button>
+      <button id="nav-muro"      class="nav-btn">El Muro</button>
+      <button id="nav-analitica" class="nav-btn">Analitica de Estadios</button>
+      <button id="nav-radar"     class="nav-btn">Radar de Empates</button>
+    </div>
+    <div class="nav-status">
+      <span id="last-update" class="last-update"></span>
+      <span id="data-badge"  class="data-badge hidden"></span>
     </div>
   </nav>
 
-  <!-- ===== PANTALLA 1: DASHBOARD ===== -->
-  <section id="screen-dashboard" class="screen">
-    <header class="app-header">
-      <div class="header-meta">
-        <span id="last-update" class="last-update"></span>
-        <span id="data-badge" class="data-badge hidden"></span>
-      </div>
-    </header>
+  <!-- TOAST BACKOFF (universal) -->
+  <div id="retry-toast" class="retry-toast hidden">
+    <p id="retry-toast-text"></p>
+  </div>
 
+  <!-- ================================================================
+       PANTALLA 1 — GOLEADAS
+  ================================================================ -->
+  <section id="screen-goleadas" class="screen">
     <main class="app-main">
       <div id="status-bar" class="status-bar hidden"></div>
 
@@ -42,7 +46,7 @@
             <option value="diferencia">Mayor diferencia</option>
             <option value="fecha">Fecha del partido</option>
           </select>
-          <button id="reload-btn" class="btn-secondary">Recargar datos</button>
+          <button id="reload-btn"   class="btn-secondary">Recargar datos</button>
           <button id="test-500-btn" class="btn-test">Probar 500</button>
           <button id="test-429-btn" class="btn-test">Probar 429</button>
         </div>
@@ -54,62 +58,73 @@
     </main>
   </section>
 
-  <!-- ===== PANTALLA 2: DETALLE DE PARTIDO ===== -->
+  <!-- ================================================================
+       PANTALLA 2 — DETALLE DE PARTIDO (interna de Goleadas)
+  ================================================================ -->
   <section id="screen-detalle" class="screen hidden">
     <main class="app-main">
       <div id="detalle-contenido">
-        <p class="empty-msg">Selecciona un partido desde el Dashboard o la vista Por Grupos.</p>
+        <p class="empty-msg">Selecciona un partido desde Goleadas.</p>
       </div>
     </main>
   </section>
 
-  <!-- ===== PANTALLA 3: ESTADÍSTICAS ===== -->
-  <section id="screen-stats" class="screen hidden">
+  <!-- ================================================================
+       PANTALLA 3 — LA RUTA DEL CAMPEON
+  ================================================================ -->
+  <section id="screen-ruta" class="screen hidden">
     <main class="app-main">
-      <h2 class="screen-title">Estadísticas del Torneo</h2>
-      <div id="stats-contenido"></div>
-    </main>
-  </section>
+      <h2 class="screen-title">La Ruta del Campeon</h2>
 
-  <!-- ===== PANTALLA 4: ANALISTA IA ===== -->
-  <section id="screen-ia" class="screen hidden">
-    <main class="app-main app-main--ia">
-      <div class="ia-panel">
-        <div class="ia-panel-header">
-          <span class="chat-title">Analista IA - Mundial 2026</span>
-          <div class="chat-header-actions">
-            <select id="ia-modelo-select" class="modelo-select">
-              <option value="groq">Groq (Llama 3.3)</option>
-              <option value="cerebras">Cerebras (Llama 3.3)</option>
-            </select>
-            <button id="ia-chat-clear-btn" class="chat-clear-btn">Limpiar</button>
-          </div>
-        </div>
-        <div id="ia-chat-messages" class="chat-messages ia-chat-messages">
-          <div class="chat-msg assistant">
-            Hola. Soy tu analista del Mundial 2026. Tengo acceso a todas las goleadas del torneo. Puedes preguntarme sobre equipos, resultados, estadisticas o cualquier analisis que necesites.
-          </div>
-        </div>
-        <div class="chat-input-area">
-          <textarea id="ia-chat-input" class="chat-input" placeholder="Pregunta sobre los partidos..." rows="2"></textarea>
-          <button id="ia-chat-send-btn" class="chat-send-btn">Enviar</button>
-        </div>
+      <div class="ruta-selector-area">
+        <label for="ruta-equipo-select" class="ruta-selector-label">Selecciona un equipo:</label>
+        <select id="ruta-equipo-select" class="ruta-select">
+          <option value="">Cargando equipos...</option>
+        </select>
+        <span id="ruta-ciudades" class="ruta-ciudades-badge"></span>
       </div>
+
+      <div id="ruta-loading-equipos" class="loading hidden">Cargando equipos...</div>
+      <div id="ruta-itinerario-loading" class="loading hidden">Calculando itinerario...</div>
+      <div id="ruta-itinerario" class="ruta-itinerario"></div>
     </main>
   </section>
 
-  <!-- ===== PANTALLA 5: POR GRUPOS ===== -->
-  <section id="screen-grupos" class="screen hidden">
+  <!-- ================================================================
+       PANTALLA 4 — EL MURO
+  ================================================================ -->
+  <section id="screen-muro" class="screen hidden">
     <main class="app-main">
-      <h2 class="screen-title">Goleadas por Grupo</h2>
-      <div id="grupos-contenido"></div>
+      <h2 class="screen-title">El Muro</h2>
+      <p class="screen-subtitle">Los 5 equipos con menos goles recibidos en fase de grupos</p>
+      <div id="muro-loading" class="loading hidden">Calculando ranking defensivo...</div>
+      <div id="muro-contenido" class="muro-lista"></div>
     </main>
   </section>
 
-  <!-- TOAST BACKOFF -->
-  <div id="retry-toast" class="retry-toast hidden">
-    <p id="retry-toast-text"></p>
-  </div>
+  <!-- ================================================================
+       PANTALLA 5 — ANALITICA DE ESTADIOS
+  ================================================================ -->
+  <section id="screen-analitica" class="screen hidden">
+    <main class="app-main app-main--wide">
+      <h2 class="screen-title">Analitica de Estadios</h2>
+      <p class="screen-subtitle">Capacidad vs asistencia potencial por recinto — ordenados por mayor asistencia potencial</p>
+      <div id="analitica-loading" class="loading hidden">Cargando estadios...</div>
+      <div id="analitica-contenido"></div>
+    </main>
+  </section>
+
+  <!-- ================================================================
+       PANTALLA 6 — RADAR DE EMPATES
+  ================================================================ -->
+  <section id="screen-radar" class="screen hidden">
+    <main class="app-main">
+      <h2 class="screen-title">Radar de Empates</h2>
+      <p class="screen-subtitle">Partidos finalizados con resultado igualado, agrupados por grupo</p>
+      <div id="radar-loading" class="loading hidden">Analizando resultados...</div>
+      <div id="radar-contenido"></div>
+    </main>
+  </section>
 
   <script type="module" src="js/main.js"></script>
 </body>
