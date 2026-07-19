@@ -38,17 +38,17 @@
 
       <div class="toolbar">
         <div class="toolbar-left">
-          <span id="total-goleadas">Total de goleadas: --</span>
+          <div class="toolbar-count"><strong id="total-goleadas">--</strong> goleadas encontradas</div>
         </div>
         <div class="toolbar-right">
           <input type="text" id="search-input" class="search-input" placeholder="Buscar equipo..." />
           <select id="sort-select" class="sort-select">
             <option value="diferencia">Mayor diferencia</option>
-            <option value="fecha">Fecha del partido</option>
+            <option value="fecha">Por fecha</option>
           </select>
-          <button id="reload-btn"   class="btn-secondary">Recargar datos</button>
-          <button id="test-500-btn" class="btn-test">Probar 500</button>
-          <button id="test-429-btn" class="btn-test">Probar 429</button>
+          <button id="reload-btn"   class="btn-secondary">Recargar</button>
+          <button id="test-500-btn" class="btn-test">500</button>
+          <button id="test-429-btn" class="btn-test">429</button>
         </div>
       </div>
 
@@ -74,7 +74,12 @@
   ================================================================ -->
   <section id="screen-ruta" class="screen hidden">
     <main class="app-main">
-      <h2 class="screen-title">La Ruta del Campeon</h2>
+      <div class="screen-header">
+        <div class="screen-header-left">
+          <h2 class="screen-title">La Ruta del Campeon</h2>
+          <p class="screen-subtitle">Itinerario de partidos, estadios y ciudades por equipo</p>
+        </div>
+      </div>
 
       <div class="ruta-selector-area">
         <label for="ruta-equipo-select" class="ruta-selector-label">Selecciona un equipo:</label>
@@ -95,8 +100,12 @@
   ================================================================ -->
   <section id="screen-muro" class="screen hidden">
     <main class="app-main">
-      <h2 class="screen-title">El Muro</h2>
-      <p class="screen-subtitle">Los 5 equipos con menos goles recibidos en fase de grupos</p>
+      <div class="screen-header">
+        <div class="screen-header-left">
+          <h2 class="screen-title">El Muro</h2>
+          <p class="screen-subtitle">Los 5 equipos con menos goles recibidos en fase de grupos</p>
+        </div>
+      </div>
       <div id="muro-loading" class="loading hidden">Calculando ranking defensivo...</div>
       <div id="muro-contenido" class="muro-lista"></div>
     </main>
@@ -107,8 +116,12 @@
   ================================================================ -->
   <section id="screen-analitica" class="screen hidden">
     <main class="app-main app-main--wide">
-      <h2 class="screen-title">Analitica de Estadios</h2>
-      <p class="screen-subtitle">Capacidad vs asistencia potencial por recinto — ordenados por mayor asistencia potencial</p>
+      <div class="screen-header">
+        <div class="screen-header-left">
+          <h2 class="screen-title">Analitica de Estadios</h2>
+          <p class="screen-subtitle">Capacidad vs asistencia potencial por recinto, ordenados de mayor a menor</p>
+        </div>
+      </div>
       <div id="analitica-loading" class="loading hidden">Cargando estadios...</div>
       <div id="analitica-contenido"></div>
     </main>
@@ -119,8 +132,12 @@
   ================================================================ -->
   <section id="screen-radar" class="screen hidden">
     <main class="app-main">
-      <h2 class="screen-title">Radar de Empates</h2>
-      <p class="screen-subtitle">Partidos finalizados con resultado igualado, agrupados por grupo</p>
+      <div class="screen-header">
+        <div class="screen-header-left">
+          <h2 class="screen-title">Radar de Empates</h2>
+          <p class="screen-subtitle">Partidos finalizados con resultado igualado, agrupados por grupo</p>
+        </div>
+      </div>
       <div id="radar-loading" class="loading hidden">Analizando resultados...</div>
       <div id="radar-contenido"></div>
     </main>

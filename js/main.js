@@ -243,7 +243,7 @@ function aplicarFiltroYOrden() {
 }
 
 function renderGoleadas(goleadas) {
-  totalGoleadasEl.textContent = `Total de goleadas: ${goleadas.length}`;
+  totalGoleadasEl.innerHTML = `<strong>${goleadas.length}</strong>`;
 
   if (goleadas.length === 0) {
     emptyMsg.textContent = "No se encontraron goleadas.";
@@ -269,29 +269,36 @@ function crearTarjetaGoleadaHTML(partido, rank) {
   const visitante = partido.equipoVisitante;
 
   const localHTML = local._esRespaldo
-    ? `<span class="team-fallback">${local.name_en}</span>`
-    : `${local.flag ? `<img src="${local.flag}" alt="${local.name_en}" />` : ""}<span>${local.name_en}</span>`;
+    ? `<div class="goleada-team"><span class="team-fallback">${local.name_en}</span></div>`
+    : `<div class="goleada-team">${local.flag ? `<img src="${local.flag}" alt="${local.name_en}" />` : ""}<span>${local.name_en}</span></div>`;
 
   const visitanteHTML = visitante._esRespaldo
-    ? `<span class="team-fallback">${visitante.name_en}</span>`
-    : `${visitante.flag ? `<img src="${visitante.flag}" alt="${visitante.name_en}" />` : ""}<span>${visitante.name_en}</span>`;
+    ? `<div class="goleada-team"><span class="team-fallback">${visitante.name_en}</span></div>`
+    : `<div class="goleada-team">${visitante.flag ? `<img src="${visitante.flag}" alt="${visitante.name_en}" />` : ""}<span>${visitante.name_en}</span></div>`;
 
   const fecha = partido.local_date
     ? new Date(partido.local_date).toLocaleDateString("es-CR", { day: "2-digit", month: "short", year: "numeric" })
     : "";
 
+  const grupo = partido.group ? `<span class="chip chip--ghost">Grupo ${partido.group}</span>` : "";
+
   return `
-    <li class="goleada-card" data-id="${partido.id}" style="cursor:pointer;">
-      <span class="goleada-rank">#${rank}</span>
+    <li class="goleada-card" data-id="${partido.id}">
+      <div class="goleada-rank">
+        <span class="goleada-rank-num">${String(rank).padStart(2, "0")}</span>
+      </div>
       <div class="goleada-teams">
         ${localHTML}
-        <span class="vs">vs</span>
+        <span class="goleada-sep">vs</span>
         ${visitanteHTML}
+        ${grupo}
       </div>
       <div class="goleada-info">
         <span class="goleada-score">${partido.home_score} - ${partido.away_score}</span>
-        <span class="goleada-diff">+${partido.diferencia} goles</span>
-        ${fecha ? `<span class="goleada-date">${fecha}</span>` : ""}
+        <div class="goleada-meta">
+          <span class="goleada-diff">+${partido.diferencia}</span>
+          ${fecha ? `<span class="goleada-date">${fecha}</span>` : ""}
+        </div>
       </div>
     </li>
   `;
@@ -742,8 +749,8 @@ function renderMuro(top5, contenedor) {
     } else if (!entrada.proximoRival) {
       rivalHTML = `<span class="muro-rival-sin-datos">Sin proximos partidos</span>`;
     } else {
-      const r         = entrada.proximoRival;
-      const rivalFlag = r.flag ? `<img src="${r.flag}" alt="${r.name_en}" class="muro-rival-flag" />` : "";
+      const r          = entrada.proximoRival;
+      const rivalFlag  = r.flag ? `<img src="${r.flag}" alt="${r.name_en}" class="muro-rival-flag" />` : "";
       const fechaRival = r.local_date
         ? new Date(r.local_date).toLocaleDateString("es-CR", { day: "2-digit", month: "short" })
         : "";
@@ -758,14 +765,18 @@ function renderMuro(top5, contenedor) {
 
     return `
       <div class="muro-card">
-        <div class="muro-rank">${i + 1}</div>
+        <div class="muro-rank">
+          <span class="muro-rank-num">${i + 1}</span>
+        </div>
         <div class="muro-equipo">
           ${flagHTML}
-          <span class="muro-nombre">${entrada.name_en}</span>
-          <span class="muro-ga-badge">${entrada.ga} gc</span>
+          <div class="muro-equipo-info">
+            <span class="muro-nombre">${entrada.name_en}</span>
+            <span class="muro-ga-badge">${entrada.ga} GC</span>
+          </div>
         </div>
         <div class="muro-proximo">
-          <span class="muro-proximo-label">Proximo partido:</span>
+          <span class="muro-proximo-label">Proximo partido</span>
           ${rivalHTML}
         </div>
       </div>
